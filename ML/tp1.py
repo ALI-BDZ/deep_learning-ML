@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
 
 df = pd.read_csv('salary.txt')
 x_full = df['YearsExperience'].values
@@ -9,6 +10,27 @@ y_full = df['Salary'].values
 
 x_train, x_test, y_train, y_test = train_test_split(x_full, y_full, test_size=1/3, random_state=42)
 
+# Reshape x for scikit-learn (needs 2D array)
+x_train_reshaped = x_train.reshape(-1, 1)
+x_test_reshaped = x_test.reshape(-1, 1)
+
+# Create and train scikit-learn model
+sklearn_model = LinearRegression()
+sklearn_model.fit(x_train_reshaped, y_train)
+
+# Get sklearn model parameters
+sklearn_w = sklearn_model.coef_[0]
+sklearn_b = sklearn_model.intercept_
+
+# Get predictions from sklearn model
+sklearn_train_pred = sklearn_model.predict(x_train_reshaped)
+sklearn_test_pred = sklearn_model.predict(x_test_reshaped)
+
+# Calculate losses for sklearn model
+sklearn_train_loss = np.mean((y_train - sklearn_train_pred) ** 2)
+sklearn_test_loss = np.mean((y_test - sklearn_test_pred) ** 2)
+
+# Original gradient descent implementation
 w = 0
 b = 0
 learning_rate = 0.01
@@ -45,74 +67,93 @@ for epoch in range(epochs):
     if epoch % 50 == 0:
         print(f'Epoch {epoch}: Train loss: {train_loss:.2f}, Test loss: {test_loss:.2f}, w: {w:.4f}, b: {b:.2f}')
 
-print(f'Final results - w: {w:.4f}, b: {b:.2f}')
+print(f'Final results - Gradient Descent: w: {w:.4f}, b: {b:.2f}')
 print(f'Training loss: {train_loss:.2f}')
 print(f'Testing loss: {test_loss:.2f}')
+
+print(f'Scikit-learn results: w: {sklearn_w:.4f}, b: {sklearn_b:.2f}')
+print(f'Scikit-learn Training loss: {sklearn_train_loss:.2f}')
+print(f'Scikit-learn Testing loss: {sklearn_test_loss:.2f}')
 
 # Final predictions after training
 final_train_predictions = w * x_train + b
 final_test_predictions = w * x_test + b
 
-plt.figure(figsize=(16, 12))
+plt.figure(figsize=(18, 15))
 
-# Create equation text for the model
-equation_text = f'y = {w:.2f}x + {b:.2f}'
+# Create equation text for both models
+gd_equation_text = f'y = {w:.2f}x + {b:.2f}'
+sklearn_equation_text = f'y = {sklearn_w:.2f}x + {sklearn_b:.2f}'
 
+# Plot 1: Data with both regression lines
 plt.subplot(3, 2, 1)
 plt.scatter(x_train, y_train, color='blue', label='Training Data')
 plt.scatter(x_test, y_test, color='green', label='Testing Data')
-plt.plot(x_train, w * x_train + b, color='red', label=f'Regression Line: {equation_text}')
+plt.plot(x_train, w * x_train + b, color='red', label=f'Gradient Descent: {gd_equation_text}')
+plt.plot(x_train, sklearn_train_pred, color='purple', linestyle='--', 
+         label=f'Scikit-learn: {sklearn_equation_text}')
 plt.xlabel('Years of Experience')
 plt.ylabel('Salary')
-plt.title('Salary vs Experience with Regression Line (Trained Model)')
+plt.title('Salary vs Experience with Both Regression Models')
 plt.legend()
 plt.grid(True)
-# Add the equation text directly on the plot
-plt.text(min(x_full) + 0.5, max(y_full) - 10000, equation_text, fontsize=12, bbox=dict(facecolor='white', alpha=0.7))
 
+# Plot 2: Loss over training
 plt.subplot(3, 2, 2)
-plt.plot(range(epochs), train_loss_history, label='Training Loss', color='blue')
-plt.plot(range(epochs), test_loss_history, label='Testing Loss', color='green')
+plt.plot(range(epochs), train_loss_history, label='GD Training Loss', color='blue')
+plt.plot(range(epochs), test_loss_history, label='GD Testing Loss', color='green')
+plt.axhline(y=sklearn_train_loss, color='purple', linestyle='--', 
+           label=f'Sklearn Train Loss: {sklearn_train_loss:.2f}')
+plt.axhline(y=sklearn_test_loss, color='orange', linestyle='--', 
+           label=f'Sklearn Test Loss: {sklearn_test_loss:.2f}')
 plt.xlabel('Epoch')
 plt.ylabel('Loss (MSE)')
-plt.title('Loss over Training')
+plt.title('Loss Comparison')
 plt.legend()
 plt.grid(True)
 
+# Plot 3: Weight evolution
 plt.subplot(3, 2, 3)
-plt.plot(range(epochs), w_history, color='purple')
+plt.plot(range(epochs), w_history, color='blue', label='Gradient Descent w')
+plt.axhline(y=sklearn_w, color='purple', linestyle='--', 
+           label=f'Sklearn w: {sklearn_w:.2f}')
 plt.xlabel('Epoch')
 plt.ylabel('Weight (w)')
-plt.title(f'Weight Evolution during Training (Final w = {w:.2f})')
+plt.title('Weight Evolution Comparison')
+plt.legend()
 plt.grid(True)
 
+# Plot 4: Bias evolution
 plt.subplot(3, 2, 4)
-plt.plot(range(epochs), b_history, color='orange')
+plt.plot(range(epochs), b_history, color='blue', label='Gradient Descent b')
+plt.axhline(y=sklearn_b, color='purple', linestyle='--', 
+           label=f'Sklearn b: {sklearn_b:.2f}')
 plt.xlabel('Epoch')
 plt.ylabel('Bias (b)')
-plt.title(f'Bias Evolution during Training (Final b = {b:.2f})')
+plt.title('Bias Evolution Comparison')
+plt.legend()
 plt.grid(True)
 
-# Adding the comparison between actual and predicted values for training data
+# Plot 5: Gradient Descent vs Actual (test data)
 plt.subplot(3, 2, 5)
-plt.scatter(y_train, final_train_predictions, color='blue')
-plt.plot([min(y_train), max(y_train)], [min(y_train), max(y_train)], 'r--', label='Perfect Predictions ')
+plt.scatter(y_test, final_test_predictions, color='red', label='Gradient Descent')
+plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'k--', label='Perfect Predictions')
 plt.xlabel('Actual Salary')
 plt.ylabel('Predicted Salary')
-plt.title('Training: Actual vs Predicted Salary')
-plt.text(min(y_train) + 5000, max(y_train) - 10000, f'Model: {equation_text}', fontsize=12, 
+plt.title('Test Data: Gradient Descent Predictions')
+plt.text(min(y_test) + 5000, max(y_test) - 10000, f'GD Model: {gd_equation_text}', fontsize=12, 
          bbox=dict(facecolor='white', alpha=0.7))
 plt.legend()
 plt.grid(True)
 
-# Adding the comparison between actual and predicted values for testing data
+# Plot 6: Sklearn vs Actual (test data)
 plt.subplot(3, 2, 6)
-plt.scatter(y_test, final_test_predictions, color='green')
-plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'r--', label='Perfect Predictions ')
+plt.scatter(y_test, sklearn_test_pred, color='purple', label='Scikit-learn')
+plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'k--', label='Perfect Predictions')
 plt.xlabel('Actual Salary')
 plt.ylabel('Predicted Salary')
-plt.title('Testing: Actual vs Predicted Salary')
-plt.text(min(y_test) + 5000, max(y_test) - 10000, f'Model: {equation_text}', fontsize=12, 
+plt.title('Test Data: Scikit-learn Predictions')
+plt.text(min(y_test) + 5000, max(y_test) - 10000, f'Sklearn Model: {sklearn_equation_text}', fontsize=12, 
          bbox=dict(facecolor='white', alpha=0.7))
 plt.legend()
 plt.grid(True)
